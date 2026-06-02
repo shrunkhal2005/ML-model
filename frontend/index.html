@@ -5,14 +5,21 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Health Lifestyle Prediction</title>
     <style>
-      body{font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;margin:0;padding:20px}
-      .card{max-width:900px;margin:24px auto;padding:26px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
-      .row{display:flex;gap:12px}
-      .col{flex:1}
-      label{display:block;font-size:13px;color:#333;margin-bottom:6px}
-      input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1}
-      button{background:#2563eb;color:#fff;padding:12px 20px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
-      #result{margin-top:18px;padding:12px;border-radius:8px;background:#eef2ff}
+      :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#2563eb;--danger:#ef4444;--success:#10b981}
+      body{font-family:Inter,Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#071027,#0f1724);color:#e6eef8;margin:0;padding:28px}
+      .card{max-width:980px;margin:28px auto;padding:28px;background:var(--card);border-radius:14px;box-shadow:0 12px 40px rgba(2,6,23,.6)}
+      .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+      label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+      input,select{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.04);background:rgba(255,255,255,.03);color:inherit}
+      .controls{text-align:right;margin-top:16px}
+      button{background:var(--accent);color:#fff;padding:10px 16px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+      #result{margin-top:18px;padding:14px;border-radius:10px;background:rgba(255,255,255,.02);min-height:48px}
+      .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700}
+      .result-high{background:rgba(239,68,68,.12);color:var(--danger)}
+      .result-low{background:rgba(16,185,129,.06);color:var(--success)}
+      .metrics{margin-top:8px;color:var(--muted);font-size:13px}
+      .loading{display:inline-block;width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,.08);border-top-color:var(--accent);animation:spin 1s linear infinite;vertical-align:middle}
+      @keyframes spin{to{transform:rotate(360deg)}}
     </style>
   </head>
   <body>
@@ -20,7 +27,7 @@
       <h1>Health Lifestyle Disease Prediction</h1>
       <p>Fill the form and click Predict. Backend powered by FastAPI.</p>
 
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+      <div class="grid">
         <div>
           <label>Age</label>
           <input id="age" type="number" value="35" />
@@ -79,11 +86,15 @@
         </div>
       </div>
 
-      <div style="margin-top:16px;text-align:right">
+      <div class="controls">
         <button id="predict">Predict</button>
       </div>
 
-      <div id="result"></div>
+      <div id="result">
+        <div id="result-badge"></div>
+        <div id="result-prob"></div>
+        <div id="result-metrics" class="metrics"></div>
+      </div>
     </div>
 
     <script>
@@ -121,17 +132,38 @@
           family_history: parseInt(document.getElementById('family_history').value)||0
         };
 
-        document.getElementById('result').innerText = 'Calling backend...';
+        const resultBadge = document.getElementById('result-badge');
+        const resultProb = document.getElementById('result-prob');
+        const resultMetrics = document.getElementById('result-metrics');
+
+        resultBadge.innerHTML = '<span class="loading"></span> Calling backend...';
+        resultProb.innerText = '';
+        resultMetrics.innerText = '';
+        btn.disabled = true;
         try {
-          const res = await fetch(apiBase + '/predict', {
+          const res = await fetch((apiBase || '') + '/predict', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify(data)
           });
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(err || res.statusText);
+          }
           const j = await res.json();
-          document.getElementById('result').innerText = JSON.stringify(j);
+          const isHigh = (j.prediction === 1) || (j.result && j.result.toLowerCase().includes('high'));
+          resultBadge.innerHTML = `<span class="badge ${isHigh? 'result-high':'result-low'}">${j.result}</span>`;
+          if (j.probability !== null && j.probability !== undefined) {
+            resultProb.innerHTML = `<strong>Confidence:</strong> ${(j.probability*100).toFixed(1)}%`;
+          }
+          if (j.metrics) {
+            resultMetrics.innerText = `Model acc: ${ (j.metrics.acc||0).toFixed(3) }   F1 (high risk): ${ (j.metrics.f1_high_risk||0).toFixed(3) }`;
+          }
         } catch(e){
-          document.getElementById('result').innerText = 'Error: '+e.message;
+          resultBadge.innerHTML = `<span class="badge" style="background:rgba(255,0,0,.06);color:var(--danger)">Error</span>`;
+          resultProb.innerText = 'Error: '+ (e.message||e);
+        } finally {
+          btn.disabled = false;
         }
       };
     </script>

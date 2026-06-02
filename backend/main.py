@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
@@ -15,6 +16,15 @@ APP_DIR = Path(__file__).resolve().parent.parent
 DATA_PATH = APP_DIR / "health_lifestyle_dataset.csv"
 
 app = FastAPI(title="Health Lifestyle Prediction API")
+
+# Allow local frontend ports for demo
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class PredictRequest(BaseModel):
@@ -119,7 +129,22 @@ def predict(req: PredictRequest):
         input_df[num_cols] = SCALER.transform(input_df[num_cols])
 
         pred = MODEL.predict(input_df)[0]
-        final_res = "High Risk" if pred == 1 else "Low Risk"
-        return {"result": final_res, "model": "RandomForest", "metrics": {"f1_high_risk": METRICS[1], "acc": METRICS[0]}}
+        final_res = "High Risk" if int(pred) == 1 else "Low Risk"
+        prob_high = None
+        if hasattr(MODEL, 'predict_proba'):
+            probs = MODEL.predict_proba(input_df)[0]
+            # assume class order [0,1]
+            if len(probs) > 1:
+                prob_high = float(probs[1])
+            else:
+                prob_high = float(probs[0])
+
+        return {
+            "result": final_res,
+            "prediction": int(pred),
+            "probability": prob_high,
+            "model": "RandomForest",
+            "metrics": {"f1_high_risk": METRICS[1], "acc": METRICS[0]}
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
