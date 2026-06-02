@@ -2,11 +2,9 @@
   "version": 2,
   "public": true,
   "builds": [
-    { "src": "frontend/index.html", "use": "@vercel/static" },
-    { "src": "Dockerfile", "use": "@vercel/docker" }
+    { "src": "frontend/index.html", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/frontend/index.html" }
   ]
 }
