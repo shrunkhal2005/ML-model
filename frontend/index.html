@@ -87,6 +87,21 @@
     </div>
 
     <script>
+      // Resolve API base at runtime by reading frontend/api_base.txt (if present).
+      // Fallbacks: when running locally use http://127.0.0.1:8000, otherwise use empty (relative) unless api_base.txt contains a URL.
+      let apiBase = '';
+      if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
+        apiBase = 'http://127.0.0.1:8000';
+      }
+
+      // Try to read optional api_base.txt in frontend folder to override API base for production.
+      try {
+        fetch('api_base.txt', {cache: 'no-store'}).then(r => r.text()).then(t => {
+          const s = t.trim();
+          if (s.length) apiBase = s;
+        }).catch(()=>{/*ignore*/});
+      } catch (e) {}
+
       const btn = document.getElementById('predict');
       btn.onclick = async () => {
         const data = {
@@ -108,7 +123,7 @@
 
         document.getElementById('result').innerText = 'Calling backend...';
         try {
-          const res = await fetch('/api/predict', {
+          const res = await fetch(apiBase + '/predict', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify(data)
