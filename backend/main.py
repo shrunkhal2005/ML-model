@@ -18,9 +18,21 @@ DATA_PATH = APP_DIR / "health_lifestyle_dataset.csv"
 app = FastAPI(title="Health Lifestyle Prediction API")
 
 # Allow local frontend ports for demo
+import os
+
+# Configure CORS origins via environment variable for production deployments.
+# If ALLOWED_ORIGINS is set (comma-separated), use that; otherwise allow all origins
+# to keep the demo simple. For stricter security set ALLOWED_ORIGINS to the exact
+# frontend URL(s) (e.g. https://your-site.vercel.app).
+origins_env = os.getenv('ALLOWED_ORIGINS')
+if origins_env:
+    allow_origins = [s.strip() for s in origins_env.split(',') if s.strip()]
+else:
+    allow_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
