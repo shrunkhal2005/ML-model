@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Health Lifestyle Prediction</title>
+    <style>
+      body{font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;margin:0;padding:20px}
+      .card{max-width:900px;margin:24px auto;padding:26px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+      .row{display:flex;gap:12px}
+      .col{flex:1}
+      label{display:block;font-size:13px;color:#333;margin-bottom:6px}
+      input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1}
+      button{background:#2563eb;color:#fff;padding:12px 20px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+      #result{margin-top:18px;padding:12px;border-radius:8px;background:#eef2ff}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Health Lifestyle Disease Prediction</h1>
+      <p>Fill the form and click Predict. Backend powered by FastAPI.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+        <div>
+          <label>Age</label>
+          <input id="age" type="number" value="35" />
+        </div>
+        <div>
+          <label>Gender</label>
+          <select id="gender"><option>male</option><option>female</option></select>
+        </div>
+        <div>
+          <label>BMI</label>
+          <input id="bmi" type="number" value="24.5" />
+        </div>
+        <div>
+          <label>Daily Steps</label>
+          <input id="daily_steps" type="number" value="6000" />
+        </div>
+        <div>
+          <label>Sleep Hours</label>
+          <input id="sleep_hours" type="number" value="7" />
+        </div>
+        <div>
+          <label>Water Intake (L)</label>
+          <input id="water_intake_l" type="number" value="2" />
+        </div>
+        <div>
+          <label>Calories Consumed</label>
+          <input id="calories_consumed" type="number" value="2200" />
+        </div>
+        <div>
+          <label>Smoker (0/1)</label>
+          <input id="smoker" type="number" value="0" />
+        </div>
+        <div>
+          <label>Alcohol (0/1)</label>
+          <input id="alcohol" type="number" value="0" />
+        </div>
+        <div>
+          <label>Resting HR</label>
+          <input id="resting_hr" type="number" value="70" />
+        </div>
+        <div>
+          <label>Systolic BP</label>
+          <input id="systolic_bp" type="number" value="120" />
+        </div>
+        <div>
+          <label>Diastolic BP</label>
+          <input id="diastolic_bp" type="number" value="80" />
+        </div>
+        <div>
+          <label>Cholesterol</label>
+          <input id="cholesterol" type="number" value="180" />
+        </div>
+        <div>
+          <label>Family History (0/1)</label>
+          <input id="family_history" type="number" value="0" />
+        </div>
+      </div>
+
+      <div style="margin-top:16px;text-align:right">
+        <button id="predict">Predict</button>
+      </div>
+
+      <div id="result"></div>
+    </div>
+
+    <script>
+      const btn = document.getElementById('predict');
+      btn.onclick = async () => {
+        const data = {
+          age: parseFloat(document.getElementById('age').value),
+          gender: document.getElementById('gender').value,
+          bmi: parseFloat(document.getElementById('bmi').value),
+          daily_steps: parseFloat(document.getElementById('daily_steps').value),
+          sleep_hours: parseFloat(document.getElementById('sleep_hours').value),
+          water_intake_l: parseFloat(document.getElementById('water_intake_l').value),
+          calories_consumed: parseFloat(document.getElementById('calories_consumed').value),
+          smoker: parseInt(document.getElementById('smoker').value)||0,
+          alcohol: parseInt(document.getElementById('alcohol').value)||0,
+          resting_hr: parseFloat(document.getElementById('resting_hr').value),
+          systolic_bp: parseFloat(document.getElementById('systolic_bp').value),
+          diastolic_bp: parseFloat(document.getElementById('diastolic_bp').value),
+          cholesterol: parseFloat(document.getElementById('cholesterol').value),
+          family_history: parseInt(document.getElementById('family_history').value)||0
+        };
+
+        document.getElementById('result').innerText = 'Calling backend...';
+        try {
+          const res = await fetch('/api/predict', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+          });
+          const j = await res.json();
+          document.getElementById('result').innerText = JSON.stringify(j);
+        } catch(e){
+          document.getElementById('result').innerText = 'Error: '+e.message;
+        }
+      };
+    </script>
+  </body>
+</html>
