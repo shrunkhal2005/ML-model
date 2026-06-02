@@ -95,9 +95,26 @@
         <div id="result-prob"></div>
         <div id="result-metrics" class="metrics"></div>
       </div>
+
+      <div style="margin-top:18px">
+        <h3 style="margin:8px 0;color:var(--muted)">Model Feature Importance</h3>
+        <canvas id="featChart" width="800" height="240"></canvas>
+      </div>
+
+      <div style="margin-top:18px">
+        <h3 style="margin:8px 0;color:var(--muted)">Demo History</h3>
+        <div id="history"></div>
+      </div>
     </div>
 
     <script>
+      // load Chart.js from CDN
+      (function(){
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        s.async = true;
+        document.head.appendChild(s);
+      })();
       // Resolve API base at runtime by reading frontend/api_base.txt (if present).
       // Fallbacks: when running locally use http://127.0.0.1:8000, otherwise use empty (relative) unless api_base.txt contains a URL.
       let apiBase = '';
@@ -159,6 +176,16 @@
           if (j.metrics) {
             resultMetrics.innerText = `Model acc: ${ (j.metrics.acc||0).toFixed(3) }   F1 (high risk): ${ (j.metrics.f1_high_risk||0).toFixed(3) }`;
           }
+
+          // Save to demo history
+          try {
+            const hist = JSON.parse(localStorage.getItem('demo_history')||'[]');
+            const entry = {ts: Date.now(), input: data, result: j};
+            hist.unshift(entry);
+            if (hist.length>20) hist.pop();
+            localStorage.setItem('demo_history', JSON.stringify(hist));
+            renderHistory();
+          } catch(e){}
         } catch(e){
           resultBadge.innerHTML = `<span class="badge" style="background:rgba(255,0,0,.06);color:var(--danger)">Error</span>`;
           resultProb.innerText = 'Error: '+ (e.message||e);
@@ -166,6 +193,51 @@
           btn.disabled = false;
         }
       };
+
+      // Render feature importance chart
+      async function loadFeatureImportance(){
+        try{
+          const res = await fetch((apiBase||'') + '/feature_importance');
+          if (!res.ok) return;
+          const j = await res.json();
+          const labels = j.top_features.map(x=>x.feature).reverse();
+          const data = j.top_features.map(x=>x.importance).reverse();
+          // wait for Chart to be available
+          const waitForChart = ()=> new Promise(res=>{const t=setInterval(()=>{if(window.Chart){clearInterval(t);res()}},100)});
+          await waitForChart();
+          const ctx = document.getElementById('featChart').getContext('2d');
+          if (window._featChart) window._featChart.destroy();
+          window._featChart = new Chart(ctx, {
+            type: 'bar',
+            data: {labels, datasets:[{label:'Importance',data,backgroundColor:'rgba(37,99,235,0.7)'}]},
+            options: {indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}
+          });
+        }catch(e){/*ignore*/}
+      }
+
+      // Demo history rendering
+      function renderHistory(){
+        const el = document.getElementById('history');
+        el.innerHTML='';
+        let hist = [];
+        try{ hist = JSON.parse(localStorage.getItem('demo_history')||'[]'); }catch(e){}
+        if (!hist.length){ el.innerHTML='<div style="color:var(--muted)">No history yet — run a prediction to populate.</div>'; return }
+        hist.forEach((h,i)=>{
+          const d = new Date(h.ts).toLocaleString();
+          const div = document.createElement('div');
+          div.style.padding='8px'; div.style.borderBottom='1px solid rgba(255,255,255,.03)';
+          div.innerHTML = `<div style="font-size:13px;color:var(--muted)">${d}</div><div style="margin-top:6px">Result: <strong>${h.result.result}</strong> &nbsp; <span style="color:var(--muted);font-size:13px">(${h.result.probability? (h.result.probability*100).toFixed(1)+'%':''})</span></div>`;
+          div.onclick = ()=>{
+            // restore inputs
+            const keys = Object.keys(h.input||{});
+            keys.forEach(k=>{ const el=document.getElementById(k); if(el) el.value = h.input[k]; });
+          };
+          el.appendChild(div);
+        });
+      }
+
+      // initial load
+      setTimeout(()=>{ loadFeatureImportance(); renderHistory(); }, 500);
     </script>
   </body>
 </html>

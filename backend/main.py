@@ -148,3 +148,18 @@ def predict(req: PredictRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/feature_importance")
+def feature_importance(n: int = 10):
+    """Return top-n feature importances from the trained RandomForest model."""
+    try:
+        if not hasattr(MODEL, 'feature_importances_'):
+            raise HTTPException(status_code=400, detail='Model has no feature_importances_')
+        importances = list(MODEL.feature_importances_)
+        features = FEATURE_NAMES
+        pairs = sorted(zip(features, importances), key=lambda x: x[1], reverse=True)
+        top = pairs[:n]
+        return {"top_features": [{"feature": f, "importance": float(imp)} for f, imp in top]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
